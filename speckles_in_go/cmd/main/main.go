@@ -1,22 +1,3 @@
-// package main
-
-// import (
-// 	// "fmt"
-// 	// "os"
-
-// 	// "speckles_in_go/internal"
-// 	"speckles_in_go/dev"
-// 	// "github.com/charmbracelet/bubbles/table"
-// 	// tea "github.com/charmbracelet/bubbletea"
-// 	// "github.com/charmbracelet/lipgloss"
-// )
-
-// func main() {
-// 	test := dev.Model{}
-// 	test.Start()
-// 	// dev.Start()
-// }
-
 package main
 
 import (
@@ -26,6 +7,8 @@ import (
 	"log"
 	"net/http"
 
+	"speckles_in_go/internal/supabase"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -34,6 +17,7 @@ import (
 )
 
 func main() {
+	supabase.InitSupabase()
 	p := tea.NewProgram(initialModel())
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
@@ -44,7 +28,8 @@ type gotReposSuccessMsg []repo
 type gotReposErrMsg error
 
 type repo struct {
-	Name string `json:"name"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 const reposURL = "https://api.github.com/orgs/charmbracelet/repos"
@@ -62,7 +47,7 @@ func getRepos() tea.Msg {
 	if err != nil {
 		return gotReposErrMsg(err)
 	}
-	defer resp.Body.Close() // nolint: errcheck
+	defer resp.Body.Close()
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -70,7 +55,6 @@ func getRepos() tea.Msg {
 	}
 
 	var repos []repo
-
 	err = json.Unmarshal(data, &repos)
 	if err != nil {
 		return gotReposErrMsg(err)
@@ -106,8 +90,8 @@ func initialModel() model {
 	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
 	ti.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
 	ti.Focus()
-	ti.CharLimit = 50
-	ti.Width = 20
+	// ti.CharLimit = 50
+	// ti.Width = 20
 	ti.ShowSuggestions = true
 
 	h := help.New()
@@ -131,7 +115,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gotReposSuccessMsg:
 		var suggestions []string
 		for _, r := range msg {
-			suggestions = append(suggestions, r.Name)
+			suggestions = append(suggestions, r.Name, r.Description)
 		}
 		m.textInput.SetSuggestions(suggestions)
 	}
