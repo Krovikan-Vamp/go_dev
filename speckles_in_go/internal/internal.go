@@ -16,8 +16,8 @@ func (m model) Init() tea.Cmd {
 	return nil // This means no io right now
 }
 
+// This defines how we should do when the model gets a message (user input action)
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// This defines how we should do when the model gets a message (user input action)
 	switch msg := msg.(type) {
 
 	// Is it a key press?
@@ -59,8 +59,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// This defines what the UI should look like at any given moment.
 func (m model) View() string {
-	// This defines what the UI should look like at any given moment.
 
 	// The header
 	s := "What should we buy at the market?\n"
@@ -89,4 +89,16 @@ func (m model) View() string {
 
 	// Send the UI for rendering
 	return s
+}
+
+func initialModel() model {
+	return model{
+		// Our to-do list is a grocery list
+		choices: []string{"Buy carrots", "Buy celery", "Buy kohlrabi"},
+
+		// A map which indicates which choices are selected. We're using
+		// the map like a mathematical set. The keys refer to the indexes
+		// of the `choices` slice, above.
+		selected: make(map[int]struct{}),
+	}
 }

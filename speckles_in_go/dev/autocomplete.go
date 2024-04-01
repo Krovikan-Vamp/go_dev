@@ -1,22 +1,3 @@
-// package main
-
-// import (
-// 	// "fmt"
-// 	// "os"
-
-// 	// "speckles_in_go/internal"
-// 	"speckles_in_go/dev"
-// 	// "github.com/charmbracelet/bubbles/table"
-// 	// tea "github.com/charmbracelet/bubbletea"
-// 	// "github.com/charmbracelet/lipgloss"
-// )
-
-// func main() {
-// 	test := dev.Model{}
-// 	test.Start()
-// 	// dev.Start()
-// }
-
 package main
 
 import (
