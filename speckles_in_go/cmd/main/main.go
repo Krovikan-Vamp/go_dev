@@ -3,65 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
-
-	"speckles_in_go/internal/supabase"
+	"os"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/joho/godotenv"
 )
-
-func main() {
-	supabase.InitSupabase()
-	p := tea.NewProgram(initialModel())
-	if _, err := p.Run(); err != nil {
-		log.Fatal(err)
-	}
-}
-
-type gotReposSuccessMsg []repo
-type gotReposErrMsg error
-
-type repo struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
-const reposURL = "https://api.github.com/orgs/charmbracelet/repos"
-
-func getRepos() tea.Msg {
-	req, err := http.NewRequest(http.MethodGet, reposURL, nil)
-	if err != nil {
-		return gotReposErrMsg(err)
-	}
-
-	req.Header.Add("Accept", "application/vnd.github+json")
-	req.Header.Add("X-GitHub-Api-Version", "2022-11-28")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return gotReposErrMsg(err)
-	}
-	defer resp.Body.Close()
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return gotReposErrMsg(err)
-	}
-
-	var repos []repo
-	err = json.Unmarshal(data, &repos)
-	if err != nil {
-		return gotReposErrMsg(err)
-	}
-
-	return gotReposSuccessMsg(repos)
-}
 
 type model struct {
 	textInput textinput.Model
@@ -69,8 +20,68 @@ type model struct {
 	keymap    keymap
 }
 
+type Procedures struct {
+	Procedures []string `json:"procedures"`
+}
+
 type keymap struct{}
 
+type gotReposSuccessMsg []repo
+type gotReposErrMsg error
+
+type repo struct {
+	Names []string `json:"procedures"`
+}
+
+func main() {
+	err := godotenv.Load()
+	if err != nil {
+		return
+	}
+
+	// client, err := supabase.InitSupabase()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// data, count, err := client.From("profiles").Select("*", "exact", false).Execute()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// 	fmt.Printf("Count: %d\n", count)
+	// }
+	// fmt.Printf("Data: %v\n", data)
+
+	program := tea.NewProgram(initialModel())
+	if _, err := program.Run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getRepos() tea.Msg {
+	// Open the JSON file
+	file, err := os.Open("lists/urological_procedures.json")
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return gotReposErrMsg(err)
+	}
+	defer file.Close()
+
+	// Decode the JSON data into a Procedures struct
+	var data Procedures
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&data)
+	if err != nil {
+		fmt.Println("Error decoding JSON:", err)
+		return gotReposErrMsg(err)
+	}
+
+	var repos []repo // will only have 1 repo
+	repos = append(repos, repo{Names: data.Procedures})
+	fmt.Println(data)
+	return gotReposSuccessMsg(repos)
+}
+
+// Keybindings
 func (k keymap) ShortHelp() []key.Binding {
 	return []key.Binding{
 		key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "complete")),
@@ -79,56 +90,63 @@ func (k keymap) ShortHelp() []key.Binding {
 		key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "quit")),
 	}
 }
+
+// Keybindings
 func (k keymap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{k.ShortHelp()}
 }
 
 func initialModel() model {
-	ti := textinput.New()
-	ti.Placeholder = "repository"
-	ti.Prompt = "charmbracelet/"
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
-	ti.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
-	ti.Focus()
+	textInput := textinput.New()
+	textInput.Placeholder = "repository"
+	textInput.Prompt = "charmbracelet/"
+	textInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
+	textInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
+	textInput.Focus()
 	// ti.CharLimit = 50
 	// ti.Width = 20
-	ti.ShowSuggestions = true
+	textInput.ShowSuggestions = true
 
-	h := help.New()
+	help := help.New()
 
-	km := keymap{}
+	keymap := keymap{}
 
-	return model{textInput: ti, help: h, keymap: km}
+	return model{textInput: textInput, help: help, keymap: keymap}
 }
 
-func (m model) Init() tea.Cmd {
+func (self model) Init() tea.Cmd {
 	return tea.Batch(getRepos, textinput.Blink)
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (self model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
-			return m, tea.Quit
+			return self, tea.Quit
 		}
 	case gotReposSuccessMsg:
 		var suggestions []string
+
 		for _, r := range msg {
-			suggestions = append(suggestions, r.Name, r.Description)
+			for _, procedure := range r.Names {
+				suggestions = append(suggestions, procedure)
+			}
 		}
-		m.textInput.SetSuggestions(suggestions)
+		fmt.Println(suggestions)
+
+		self.textInput.SetSuggestions(suggestions)
 	}
 
 	var cmd tea.Cmd
-	m.textInput, cmd = m.textInput.Update(msg)
-	return m, cmd
+	self.textInput, cmd = self.textInput.Update(msg)
+	return self, cmd
 }
 
-func (m model) View() string {
+func (self model) View() string {
 	return fmt.Sprintf(
 		"Pick a Charm™ repo:\n\n  %s\n\n%s\n\n",
-		m.textInput.View(),
-		m.help.View(m.keymap),
+		self.textInput.View(),
+		self.help.View(self.keymap),
 	)
 }
